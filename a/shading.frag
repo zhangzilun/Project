@@ -1,35 +1,25 @@
 #version 450
 
-layout(location = 0) in vec2 inTexcoord; 
-layout(location =0) out vec4 fragColor;
+
+layout(location = 0) in vec2 inTexcoord; //Texture coordinates pass vertices into the fragment shader
+layout(location =0) out vec4 fragColor;  //pass the color value of the fragment into the OpenGL pipeline
 
 
-layout(std140, binding = 0) uniform UBO
+//Sharing data(mouse windows camera) between shader programs 
+
+
+layout(binding=0) uniform UBO  //binding point = 0 --- UBO is assigned to bind point 0 in the shader program，need to specify the binding point as 0 in other places where this UBO is used. 
 {
-    vec2 viewportSize;
-    vec2 mousePos;
-    int mouseButtonAction[3];
-    float cameraDist;
+	vec2 viewportSize;
+	vec2 mousePos;//[0,1]
+	ivec3 mouseButtonAction;
+	float cameraDist;
 };
-
-uniform float focusStrength = 0.1; // 控制散焦强度，可以根据需求调整
-vec4 color = vec4(1.0);
-vec4 outColor = vec4(1.0);
-
-// 计算散焦效果
-vec4 applyDof(vec4 color, float depth)
-{
-    float focusDist = cameraDist;
-    float focusRange = 2.0; // 控制焦距范围，可以根据需求调整
-
-    float dofAmount = clamp(abs(depth - focusDist) / focusRange, 0.0, 1.0);
-    dofAmount = pow(dofAmount, focusStrength);
-
-    return mix(color, vec4(0.0, 0.0, 0.0, 1.0), dofAmount);
-}
 
 #define PI 3.14159265358979323846
 #define CAMERA_DIST 3
+
+//Determine Maximum and Minimum Vectors
 
 float maxcomp(vec2 v){
 	return max(v.x,v.y);
@@ -51,6 +41,8 @@ float mincomp(vec4 v){
 	return min(min(min(v.x,v.y),v.z),v.w);
 }
 
+//generate random numbers or noise
+
 float hash11( float n )    // in [0,1]
 {
     return fract(sin(n*13.)*43758.5453);
@@ -60,9 +52,13 @@ vec2 hash22( vec2 p ) {
     return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453);
 }
 
+//calculate angles to radians
 
 #define DEG2RAD(a) a*PI/180.
 
+//moving model 
+
+//set matrix
 mat3 identity(inout mat3 m){
     m[0]=vec3(0.);
     m[1]=vec3(0.);
@@ -106,6 +102,7 @@ mat3 scale(vec3 factor){
     return m;
 }
 
+//Objects in the scene are transformed from the world coordinate system to the camera coordinate system using ray tracing.
 
 //eye matrix
 mat3 lookAt(vec3 pos,vec3 lookat,vec3 up){
@@ -122,6 +119,10 @@ mat3 lookAt(vec3 pos,vec3 lookat,vec3 up){
     return m;    
 }
 
+//When calculating lighting and other calculations that require the use of normals, 
+//usually all vectors are transformed into tangent space, and then calculated, 
+//and finally the calculated results are transformed into the observation space through the TBN matrix
+
 mat3 surfaceTBN(vec3 normal){
     mat3 m;
     identity(m);
@@ -134,9 +135,9 @@ mat3 surfaceTBN(vec3 normal){
 }
 
 /////////////////////////////////////////////////////////////
-#define RAY_MAXDEPTH 100.
-#define RAY_INTERVAL 0.001
-#define ZERO (min(iFrame,0))
+#define RAY_MAXDEPTH 100.        //The number of times a ray can bounce/refract in the scene
+#define RAY_INTERVAL 0.001       //The distance the ray travels
+#define ZERO (min(iFrame,0))     //iFrame is the current frame number---set to fully transparent
 
 
 #define ROOM 0
@@ -145,17 +146,23 @@ mat3 surfaceTBN(vec3 normal){
 #define CUBE1 3
 #define LIGHT 4
 
+//When light passes through the interface of a medium, 
+//the refractive index of the medium affects the direction of refraction of the light
+
 //refractive index
 #define RF_AIR 1.0 
 #define RF_WATER 1.33 
 #define RF_GLASS 1.5
 
-const float sphereR=3.;
-const int LIGHTSNUM=1;
+const float sphereR=3.;  //radius of the sphere = 3
+const int LIGHTSNUM=1;   //number of light = 1
 
 const mat4 identityM=mat4(vec4(1.,0.,0.,0.),vec4(0.,1.,0.,0.),vec4(0.,0.,1.,0.),vec4(0.,0.,0.,1.));
-const vec3 triangluarLightVertices[]=vec3[3](vec3(-3.,19.9,0.),vec3(3.,19.9,0.),vec3(0.,19.9,3.));
+// const mat3 m=
+const vec3 triangluarLightVertices[]=vec3[3](vec3(-3.,19.9,0.),vec3(3.,19.9,0.),vec3(0.,19.9,3.)); //light
 
+
+//set material
 struct Material{
     vec3 albedo;
 	vec3 kd;	//diffuse
@@ -163,7 +170,7 @@ struct Material{
     float shinness;	//shinees
 };
 
-
+//light
 struct Light{
 	vec3 pos;
     vec3 intensity;
@@ -172,18 +179,18 @@ struct Light{
 struct Obj{
 	float depth;
     int id;
-    vec3 pos;
-    vec3 N;
+    vec3 pos; //position
+    vec3 N; //surface normal vector
 };
 
 struct Para{
-    Obj obj;
-    vec3 V;
+    Obj obj;  //information of intersect
+    vec3 V;   //direction vector
     vec3 k; //light intensity coefficient
 };
 const vec3 a_glass=vec3(.3,0.2,0.3); //attenuation constant
 
-    
+//rendering order
 Obj intersectDepth(in Obj A, in Obj B) {
     if(A.depth>B.depth)return A;
     return B;
@@ -194,26 +201,32 @@ Obj unionDepth(Obj A, Obj B) {
     return B;
 }
 
+//
 Material getMaterialById(int id){
     switch(id){
         case ROOM: //house
-        return Material(vec3(1.),vec3(0.6),vec3(0.4),1000.);
+        return Material(vec3(1.),vec3(0.6),vec3(0.4),1000.); 
         case SPHERE1: //sphere
         return Material(vec3(1.,0.,0.),vec3(0.6),vec3(0.4),100.);
-        case CUBE1: 
-        return Material(vec3(1.,1.,0.),vec3(0.6),vec3(0.9),100.);
+        case CUBE1: //sphere glass
+        return Material(vec3(1.,1.,0.),vec3(0.6),vec3(0.4),100.);
         case SQUARE:
-        return Material(vec3(1.,0.,0.),vec3(0.6),vec3(0.4),100.);   
+        return Material(vec3(1.),vec3(0.6),vec3(0.4),100.);   
     }
     //no intersection
     return Material(vec3(0.),vec3(0.),vec3(0.),0.);
 }
+
+//floor --Black and white checkerboard texture.
 float checkersMod( in vec3 p )
 {
     vec3 q = floor(p);
     return clamp(mod(q.x+q.y+q.z,2.),0.,1.);
 }
 
+//
+
+//Intersecting Rays and Cubes --rd-direction, ro-starting point
 float intersectCube(vec3 ro,vec3 rd){
     //cube size s
     vec3 temp[2];
@@ -228,6 +241,8 @@ float intersectCube(vec3 ro,vec3 rd){
     if(tMinMax>=tMaxMin&&tMinMax>RAY_INTERVAL)return (tMaxMin>RAY_INTERVAL?tMaxMin:tMinMax);
     return 10000.;
 }
+
+//Intersecting of cube
 Obj intersectCube1(vec3 ro,vec3 rd){
     Obj res;
     vec3 offset=vec3(0,1,3);
@@ -249,11 +264,13 @@ Obj intersectCube1(vec3 ro,vec3 rd){
 }
 
 float intersectSquare(vec3 ro,vec3 rd){
-    float t=-ro.y/rd.y;
-    vec3 pos=ro+t*rd;
-    if(maxcomp(abs(pos.xz)-vec2(1))<0.&&t>RAY_INTERVAL)return t;
+    float t=-ro.y/rd.y;    //Calculate the intersection point of the ray with the plane 
+    vec3 pos=ro+t*rd;      //The difference between the point's x and z coordinates and the boundary value (x,z=±1)
+    if(maxcomp(abs(pos.xz)-vec2(1))<0.&&t>RAY_INTERVAL)return t;  //The maximum value of the difference between x and z coordinates is less than 0 and he intersection distance is greater than the minimum distance of the ray
     return 10000.;
 }
+
+//Determines which objects in the scene the ray intersects and ultimately determines which pixel colors need to be rendered
 float intersectSphere(in vec3 ro,in vec3 rd){
     float h;
     //ray intersection
@@ -270,6 +287,9 @@ float intersectSphere(in vec3 ro,in vec3 rd){
     }
     return 10000.;
 }
+
+//Determine whether the ray and the sphere intersect. If they intersect, the function will calculate the position and normal vector of the intersection point, 
+//and store these information in an Obj structure and return
 Obj intersectSphere1(vec3 ro,vec3 rd){
     Obj res;
     vec3 offset=vec3(0.,1.1,0.);
@@ -282,6 +302,8 @@ Obj intersectSphere1(vec3 ro,vec3 rd){
     res.depth=t;
     return res;
 }
+
+//interset quare
 Obj intersectSquare1(vec3 ro,vec3 rd){
     Obj res;
     vec3 offset=vec3(0.,0.1,0.);
@@ -302,7 +324,13 @@ Obj intersectSquare1(vec3 ro,vec3 rd){
     return res;
 
 }
-//setup scene
+
+
+
+
+
+
+//setup scene Detect light and objects in the scene
 Obj intersectScene(vec3 ro,vec3 rd){
     Obj res=Obj(10000.,-1,vec3(0.),vec3(0.));
     res=unionDepth(res,intersectSquare1(ro,rd));
@@ -319,12 +347,14 @@ float calcShadow(vec3 ro, vec3 rd,float tmin,float tmax,float k){
     return 1.;
 }
 
+//Schlick approximation algorithm for calculating the reflectivity of light and surfaces
 float SchlickApproximation(float cosTheta){
     const float R0=0.0016;// glass
     // return R0+(1.-R0)*pow(1.-cosTheta,5.);
     return R0 + (1.0 - R0) * exp2((-5.55473 * cosTheta - 6.98316) * cosTheta);
 }
 
+//calculating shadows using Monte Carlo sampling
 vec3 calcShadow(vec3 ro,vec3 N,vec3 L,float tmin,float tmax){
     const int sampleNum=16;
 
@@ -393,7 +423,7 @@ vec3 calcShadow(vec3 ro,vec3 N,vec3 L,float tmin,float tmax){
     return res;
 }
 
-//with shadow
+//with shadow--Blinn-Phong shader
 vec3 BlinnPhongShading(in Light lights[LIGHTSNUM],in Material material,vec3 pos,vec3 V,vec3 N){
     //shadow
 	vec3 col=vec3(0.);
@@ -415,6 +445,7 @@ vec3 BlinnPhongShading(in Light lights[LIGHTSNUM],in Material material,vec3 pos,
     return (col);
 }
 
+//set up the camera and cast a view ray from the camera position to the scene.
 void setCamera(vec2 uv,out vec3 ro,out vec3 rd){
     uv-=0.5;
     if(viewportSize.x>viewportSize.y) 
@@ -438,6 +469,7 @@ void setCamera(vec2 uv,out vec3 ro,out vec3 rd){
 	rd=normalize(V*vec3(uv,-1.));	//world space
 }
 
+//looping Until the maximum number of intersections is reached or the ray intersects the background.Returns the computed color of a pixel
 vec3 render(vec3 ro,vec3 rd){
 
  	vec3 bgColor=vec3(0.5);
@@ -540,11 +572,4 @@ void main()
     //col = vec3(1.0) - exp((-col) * exposure);
 
     fragColor = vec4(col,1.);
-
-    // 计算深度值
-    float depth = gl_FragCoord.z / gl_FragCoord.w;
-
-    // 应用散焦效果
-    vec4 colorWithDof = applyDof(color, depth);
-    outColor = colorWithDof;
 }
