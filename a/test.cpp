@@ -1,4 +1,4 @@
-﻿#include "gl/glew.h"
+#include "gl/glew.h"
 #include "glfw/glfw3.h"
 #include <iostream>
 #include <chrono>
@@ -6,8 +6,8 @@
 #include <vector>
 #include <fstream>
 
-const char *title = "test";
 
+const char *title = "test";
 
 const char *vertCode = "\
 #version 450\n\
@@ -24,7 +24,7 @@ void main() {\n\
 }\n\
 ";
 
-const char *fragShaderPath = "C:\\Users\\22408\\OneDrive\\raytracing/shading.frag";
+const char *fragShaderPath = "shading.frag";
 
 struct Vertex
 {
@@ -38,7 +38,6 @@ struct UBO
     float mousePos[2]; //[0,1]
     int mouseButtonAction[3];
     float cameraDist{20};
-    float focusStrength{ 0.0f };
 } uboData{};
 
 std::chrono::high_resolution_clock::time_point startTimes[2];
@@ -53,7 +52,7 @@ std::vector<Vertex> vertices{
     {{-1 * scale + offset, 1 * scale + offset, 0}, {0, 1, 0}},
 };
 
-GLuint createShader(GLenum stage, const char* code)
+GLuint createShader(GLenum stage, const char *code)
 {
     GLuint ret = glCreateShader(stage);
     glShaderSource(ret, 1, &code, NULL);
@@ -69,13 +68,12 @@ GLuint createShader(GLenum stage, const char* code)
         std::string log;
         log.resize(static_cast<size_t>(len));
         glGetShaderInfoLog(ret, len, NULL, &log[0]);
-        std::cout << "Shader compile error:" << std::endl << log << std::endl;
+        std::cout << log << std::endl;
         glDeleteShader(ret);
         assert(0 && "failed to compile shader");
     }
     return ret;
 }
-
 
 GLuint createProgram(GLuint *shaders, size_t count)
 {
@@ -188,7 +186,6 @@ void updateUBO()
     glUnmapBuffer(GL_UNIFORM_BUFFER);
 }
 
-
 void draw()
 {
     if (updateUboFlag)
@@ -213,32 +210,9 @@ void mainloop()
         glfwSwapBuffers(window);
     }
 }
-//void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
-//{
-//}
-
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
-    if (action == GLFW_PRESS)
-    {
-        switch (key)
-        {
-        case GLFW_KEY_UP:
-            // 增加焦散效果
-            glUniform1f(glGetUniformLocation(program, "focusStrength"), uboData.focusStrength + 0.1);
-            uboData.focusStrength += 0.1;
-            break;
-        case GLFW_KEY_DOWN:
-            // 减少焦散效果
-            glUniform1f(glGetUniformLocation(program, "focusStrength"), uboData.focusStrength - 0.1);
-            uboData.focusStrength -= 0.1;
-            break;
-        }
-    }
 }
-
-
-
 void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT)
