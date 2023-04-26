@@ -1,6 +1,6 @@
-#include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2008
-#include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
-#include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
+#include <math.h>   
+#include <stdlib.h> 
+#include <stdio.h>  
 #include <random>
 #include <iostream>
 
@@ -17,15 +17,15 @@
 const Sphere spheres[] =
 {
 	//Scene: radius, position, emission, color, material
-	Sphere(1e5, Vector3(1e5 + 1, 40.8, 81.6), Vector3(), Vector3(.75, .25, .25), ReflectionType::DIFFUSE),   //Left
-	Sphere(1e5, Vector3(-1e5 + 99, 40.8, 81.6), Vector3(), Vector3(.25, .25, .75), ReflectionType::DIFFUSE), //Rght
-	Sphere(1e5, Vector3(50, 40.8, 1e5), Vector3(), Vector3(.75, .75, .75), ReflectionType::DIFFUSE),         //Back
-	Sphere(1e5, Vector3(50, 40.8, -1e5 + 170), Vector3(), Vector3(), ReflectionType::DIFFUSE),               //Frnt
-	Sphere(1e5, Vector3(50, 1e5, 81.6), Vector3(), Vector3(.75, .75, .75), ReflectionType::DIFFUSE),         //Botm
-	Sphere(1e5, Vector3(50, -1e5 + 81.6, 81.6), Vector3(), Vector3(.75, .75, .75), ReflectionType::DIFFUSE), //Top
-	Sphere(16.5, Vector3(27, 16.5, 47), Vector3(), Vector3(1, 1, 1) * .999, ReflectionType::SPECULAR),        //Mirr
-	Sphere(16.5, Vector3(73, 16.5, 78), Vector3(), Vector3(1, 1, 1) * .999, ReflectionType::REFRACTIVE),        //Glas
-	Sphere(600, Vector3(50, 681.6 - .27, 81.6), Vector3(12, 12, 12), Vector3(), ReflectionType::DIFFUSE)     //Lite
+	Sphere(1e5, Vector3(1e5 + 1, 40.8, 81.6), Vector3(), Vector3(.75, .25, .25), ReflectionType::DIFFUSE),   
+	Sphere(1e5, Vector3(-1e5 + 99, 40.8, 81.6), Vector3(), Vector3(.25, .25, .75), ReflectionType::DIFFUSE), 
+	Sphere(1e5, Vector3(50, 40.8, 1e5), Vector3(), Vector3(.75, .75, .75), ReflectionType::DIFFUSE),         
+	Sphere(1e5, Vector3(50, 40.8, -1e5 + 170), Vector3(), Vector3(), ReflectionType::DIFFUSE),               
+	Sphere(1e5, Vector3(50, 1e5, 81.6), Vector3(), Vector3(.75, .75, .75), ReflectionType::DIFFUSE),         
+	Sphere(1e5, Vector3(50, -1e5 + 81.6, 81.6), Vector3(), Vector3(.75, .75, .75), ReflectionType::DIFFUSE), 
+	Sphere(16.5, Vector3(27, 16.5, 47), Vector3(), Vector3(1, 1, 1) * .999, ReflectionType::SPECULAR),        
+	Sphere(16.5, Vector3(73, 16.5, 78), Vector3(), Vector3(1, 1, 1) * .999, ReflectionType::REFRACTIVE),        
+	Sphere(600, Vector3(50, 681.6 - .27, 81.6), Vector3(12, 12, 12), Vector3(), ReflectionType::DIFFUSE)     
 };
 
 const std::uniform_real_distribution<double> distr(0.0, 1.0);
@@ -35,11 +35,7 @@ inline double erand48(uint16_t xsubi[3])
 	return static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
 }
 
-//inline double erand48(uint16_t* X)
-//{
-//	std::default_random_engine generator(*X);
-//	return distr(generator);
-//}
+
 
 inline double clamp(double x)
 {
@@ -72,8 +68,8 @@ Vector3 radiance(const Ray& r, int32_t depth, uint16_t* Xi)
 	int32_t id = 0; // id of intersected object
 
 	if (!getClosestIntersectionWithSpheres(r, t, id))
-		return Vector3();                  // if miss, return black
-
+		return Vector3();                 
+	
 	const Sphere& obj = spheres[id]; // the hit object
 	Vector3 x = r.origin + r.direction * t, n = (x - obj.centre).normalise(), nl = n.dotProduct(r.direction) < 0 ? n : n * -1;
 
