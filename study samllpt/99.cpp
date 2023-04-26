@@ -30,6 +30,7 @@ const Sphere spheres[] =
 
 const std::uniform_real_distribution<double> distr(0.0, 1.0);
 
+   // Random number generator.
 inline double erand48(uint16_t xsubi[3])
 {
 	return static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
@@ -42,12 +43,14 @@ inline double clamp(double x)
 	return x < 0 ? 0 : x > 1 ? 1 : x;
 }
 
+   // Applies a gamma correction of 2.2
 inline int32_t toInt(double x)
 {
-	// Applies a gamma correction of 2.2
+	
 	return static_cast<int32_t>(pow(clamp(x), 1 / 2.2) * 255 + .5);
 }
 
+//Intersection return value
 inline bool getClosestIntersectionWithSpheres(const Ray& r, double& t, int& id)
 {
 	double n = sizeof(spheres) / sizeof(Sphere), d, inf = t = 1e20;
@@ -62,10 +65,13 @@ inline bool getClosestIntersectionWithSpheres(const Ray& r, double& t, int& id)
 	return t < inf;
 }
 
+//The core function that implements the Monte Carlo path tracing algorithm. It recursively calculates the colours in the scene based on the given light. 
+//Handles different light paths such as diffuse, specular and refractive depending on the type of reflection of the sphere.
+
 Vector3 radiance(const Ray& r, int32_t depth, uint16_t* Xi)
 {
-	double t;   // distance to intersection
-	int32_t id = 0; // id of intersected object
+	double t;   
+	int32_t id = 0; 
 
 	if (!getClosestIntersectionWithSpheres(r, t, id))
 		return Vector3();                 
@@ -76,7 +82,7 @@ Vector3 radiance(const Ray& r, int32_t depth, uint16_t* Xi)
 	Vector3 f = obj.colour;
 
 	double maxRefl = std::max(obj.colour.x, std::max(obj.colour.y, obj.colour.z));
-	//double p = obj.colour.x > obj.colour.y && obj.colour.x > obj.colour.z ? obj.colour.x : obj.colour.y > obj.colour.z ? obj.colour.y : obj.colour.z; // max refl
+	
 
 	if (++depth > 5)
 	{
@@ -107,8 +113,8 @@ Vector3 radiance(const Ray& r, int32_t depth, uint16_t* Xi)
 		return obj.emission + f.multiply(radiance(Ray(x, r.direction - n * 2 * n.dotProduct(r.direction)), depth, Xi));
 	}
 
-	Ray reflRay(x, r.direction - n * 2 * n.dotProduct(r.direction)); // Ideal dielectric Refl_t::REFRACTION
-	bool into = n.dotProduct(nl) > 0;                // Ray from outside going in?
+	Ray reflRay(x, r.direction - n * 2 * n.dotProduct(r.direction)); 
+	bool into = n.dotProduct(nl) > 0;               
 	double nc = 1, nt = 1.5, nnt = into ? nc / nt : nt / nc, ddn = r.direction.dotProduct(nl), cos2t;
 
 	if ((cos2t = 1 - nnt * nnt * (1 - ddn * ddn)) < 0)
